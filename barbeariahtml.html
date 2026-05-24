@@ -1,0 +1,852 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Barbearia">
+<meta name="theme-color" content="#0f0d0b">
+<title>Barbearia</title>
+
+<!-- PWA Manifest inline -->
+<script>
+const manifestData = {
+  name: "Barbearia",
+  short_name: "Barbearia",
+  start_url: ".",
+  display: "standalone",
+  background_color: "#0f0d0b",
+  theme_color: "#0f0d0b",
+  icons: [{
+    src: "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%230f0d0b'/><text y='.9em' font-size='80' x='10'>✂️</text></svg>",
+    sizes: "192x192", type: "image/svg+xml"
+  }]
+};
+const blob = new Blob([JSON.stringify(manifestData)], {type:'application/json'});
+const manifestURL = URL.createObjectURL(blob);
+document.write(`<link rel="manifest" href="${manifestURL}">`);
+</script>
+
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+
+<style>
+  :root {
+    --bg:#0f0d0b;--surface:#1a1713;--card:#221f1a;--border:#2e2b24;
+    --gold:#c9a84c;--gold-light:#e8c96e;--red:#c0392b;--green:#27ae60;
+    --blue:#2980b9;--text:#f0ead8;--muted:#7a7060;--radius:12px;
+    --safe-top: env(safe-area-inset-top, 0px);
+    --safe-bottom: env(safe-area-inset-bottom, 0px);
+  }
+  *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
+  html,body{height:100%;overflow:hidden;}
+  body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;display:flex;flex-direction:column;}
+
+  /* INSTALL BANNER */
+  #installBanner{background:linear-gradient(135deg,#2a2416,#1a1713);border-bottom:1px solid var(--border);padding:10px 14px;display:flex;align-items:center;gap:10px;flex-shrink:0;}
+  #installBanner.hidden{display:none;}
+  #installBanner .ib-icon{font-size:1.6rem;}
+  #installBanner .ib-text{flex:1;}
+  #installBanner .ib-title{font-size:0.8rem;font-weight:600;color:var(--gold);}
+  #installBanner .ib-sub{font-size:0.68rem;color:var(--muted);margin-top:1px;line-height:1.3;}
+  #installBanner .ib-close{color:var(--muted);font-size:1rem;padding:4px;cursor:pointer;background:none;border:none;}
+
+  header{text-align:center;padding:calc(var(--safe-top) + 14px) 0 10px;flex-shrink:0;}
+  header h1{font-family:'Bebas Neue';font-size:2.2rem;letter-spacing:5px;color:var(--gold);line-height:1;}
+  header p{color:var(--muted);font-size:0.65rem;letter-spacing:2px;text-transform:uppercase;margin-top:2px;}
+
+  /* SCROLL AREA */
+  .scroll-area{flex:1;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;padding:0 14px calc(var(--safe-bottom) + 70px);}
+
+  .tabs{position:fixed;bottom:0;left:0;right:0;display:flex;background:#0d0b09;border-top:1px solid var(--border);z-index:100;padding:6px 6px calc(var(--safe-bottom) + 6px);}
+  .tab{flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;padding:5px 2px;border:none;background:transparent;color:var(--muted);font-family:'DM Sans';font-size:0.58rem;font-weight:500;cursor:pointer;border-radius:8px;transition:color 0.2s;}
+  .tab .ti{font-size:1.1rem;}
+  .tab.active{color:var(--gold);}
+
+  .section{display:none;}.section.active{display:block;}
+  .cat-label{font-size:0.58rem;letter-spacing:2.5px;text-transform:uppercase;color:var(--muted);margin:12px 0 6px;display:block;}
+  .scroll-cats{overflow-x:auto;display:flex;gap:5px;padding-bottom:4px;margin-bottom:7px;scrollbar-width:none;}
+  .scroll-cats::-webkit-scrollbar{display:none;}
+  .cat-pill{padding:4px 11px;border-radius:20px;border:1px solid var(--border);background:var(--card);color:var(--muted);font-size:0.7rem;font-weight:600;cursor:pointer;white-space:nowrap;transition:all 0.2s;}
+  .cat-pill.active{background:var(--gold);color:#0f0d0b;border-color:var(--gold);}
+
+  .servicos-grid{display:grid;grid-template-columns:1fr 1fr;gap:7px;}
+  .servico-btn{background:var(--card);border:1.5px solid var(--border);border-radius:var(--radius);padding:11px 10px;cursor:pointer;transition:all 0.15s;text-align:left;position:relative;overflow:hidden;}
+  .servico-btn:active{transform:scale(0.95);}
+  .servico-btn.selected{border-color:var(--gold);background:#2a2416;}
+  .servico-btn .nome{font-size:0.8rem;font-weight:600;color:var(--text);display:block;margin-bottom:1px;}
+  .servico-btn .sub{font-size:0.65rem;color:var(--muted);display:block;margin-bottom:3px;min-height:13px;}
+  .servico-btn .preco{font-family:'Bebas Neue';font-size:1.2rem;color:var(--gold);letter-spacing:1px;}
+  .qtd-badge{position:absolute;top:6px;right:6px;background:var(--gold);color:#0f0d0b;font-size:0.6rem;font-weight:700;width:18px;height:18px;border-radius:50%;display:flex;align-items:center;justify-content:center;opacity:0;transition:opacity 0.2s;}
+  .servico-btn.selected .qtd-badge{opacity:1;}
+
+  .avulso-row{display:flex;gap:6px;margin-bottom:4px;}
+  .avulso-row input{flex:1;background:var(--card);border:1.5px solid var(--border);border-radius:8px;padding:9px 11px;color:var(--text);font-family:'DM Sans';font-size:0.83rem;outline:none;}
+  .avulso-row input:focus{border-color:var(--gold);}
+  .avulso-row input::placeholder{color:var(--muted);}
+  .avulso-row button{background:var(--card);border:1.5px solid var(--border);border-radius:8px;padding:0 12px;color:var(--gold);font-family:'Bebas Neue';font-size:0.9rem;letter-spacing:1px;cursor:pointer;}
+
+  .comanda-box{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:12px;margin:11px 0 8px;}
+  .comanda-box h3{font-size:0.58rem;letter-spacing:2.5px;text-transform:uppercase;color:var(--muted);margin-bottom:8px;}
+  .comanda-item{display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid var(--border);font-size:0.82rem;}
+  .comanda-item:last-child{border-bottom:none;}
+  .item-val{color:var(--gold);font-weight:600;}
+  .rm-btn{background:none;border:none;color:var(--muted);cursor:pointer;font-size:0.82rem;padding:0 0 0 7px;}
+  .total-row{display:flex;justify-content:space-between;align-items:center;padding:10px 0 2px;}
+  .total-row span:first-child{font-size:0.66rem;letter-spacing:2px;text-transform:uppercase;color:var(--muted);}
+  .total-valor{font-family:'Bebas Neue';font-size:1.8rem;color:var(--gold-light);letter-spacing:2px;}
+
+  .input-field{width:100%;background:var(--card);border:1.5px solid var(--border);border-radius:8px;padding:10px 12px;color:var(--text);font-family:'DM Sans';font-size:0.85rem;outline:none;margin-bottom:7px;}
+  .input-field:focus{border-color:var(--gold);}
+  .input-field::placeholder{color:var(--muted);}
+
+  .fiado-toggle{display:flex;align-items:center;gap:10px;margin-bottom:8px;background:var(--card);border:1.5px solid var(--border);border-radius:8px;padding:9px 12px;cursor:pointer;}
+  .fiado-toggle.on{border-color:var(--red);}
+  .toggle-dot{width:32px;height:17px;background:var(--border);border-radius:10px;position:relative;transition:background 0.2s;flex-shrink:0;}
+  .toggle-dot::after{content:'';position:absolute;width:11px;height:11px;background:var(--muted);border-radius:50%;top:3px;left:3px;transition:all 0.2s;}
+  .fiado-toggle.on .toggle-dot{background:var(--red);}
+  .fiado-toggle.on .toggle-dot::after{left:18px;background:white;}
+  .fiado-label{font-size:0.85rem;color:var(--text);}
+  .fiado-toggle.on .fiado-label{color:#e74c3c;font-weight:600;}
+
+  .btn-primary{width:100%;padding:13px;background:var(--gold);color:#0f0d0b;border:none;border-radius:var(--radius);font-family:'Bebas Neue';font-size:1.1rem;letter-spacing:2px;cursor:pointer;}
+  .btn-primary:active{background:var(--gold-light);}
+  .btn-primary:disabled{opacity:0.5;}
+  .btn-secondary{width:100%;padding:10px;background:transparent;color:var(--muted);border:1px solid var(--border);border-radius:var(--radius);font-family:'DM Sans';font-size:0.8rem;cursor:pointer;margin-top:6px;}
+
+  .resumo-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:14px;margin-bottom:10px;}
+  .resumo-card h3{font-size:0.58rem;letter-spacing:2.5px;text-transform:uppercase;color:var(--muted);margin-bottom:10px;}
+  .stat-row{display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid var(--border);font-size:0.82rem;}
+  .stat-row:last-child{border-bottom:none;}
+  .stat-row .label{color:var(--muted);}
+  .stat-row .val{font-weight:600;}
+  .val.green{color:var(--green);}.val.red{color:var(--red);}.val.blue{color:#5dade2;}
+  .val.gold{color:var(--gold);font-family:'Bebas Neue';font-size:1.1rem;letter-spacing:1px;}
+
+  .historico-item{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:11px;margin-bottom:6px;}
+  .hi-header{display:flex;justify-content:space-between;margin-bottom:3px;}
+  .hi-nome{font-weight:600;font-size:0.85rem;}
+  .hi-hora{font-size:0.66rem;color:var(--muted);}
+  .hi-servicos{font-size:0.74rem;color:var(--muted);margin-bottom:5px;}
+  .hi-footer{display:flex;justify-content:space-between;align-items:center;}
+  .fiado-tag{background:rgba(192,57,43,0.2);color:#e74c3c;font-size:0.6rem;font-weight:700;padding:2px 6px;border-radius:4px;text-transform:uppercase;}
+  .pago-tag{background:rgba(39,174,96,0.15);color:var(--green);font-size:0.6rem;font-weight:700;padding:2px 6px;border-radius:4px;text-transform:uppercase;}
+  .hi-valor{font-family:'Bebas Neue';font-size:1.05rem;color:var(--gold);letter-spacing:1px;}
+
+  .fiado-item{background:var(--card);border:1px solid rgba(192,57,43,0.3);border-radius:var(--radius);padding:12px;margin-bottom:6px;display:flex;justify-content:space-between;align-items:flex-start;}
+  .fi-nome{font-weight:600;font-size:0.85rem;}
+  .fi-servico{font-size:0.72rem;color:var(--muted);margin-top:2px;}
+  .fi-data{font-size:0.65rem;color:var(--muted);margin-top:2px;}
+  .fi-val{font-family:'Bebas Neue';font-size:1.2rem;color:var(--red);letter-spacing:1px;}
+  .btn-receber{background:rgba(39,174,96,0.15);border:1px solid var(--green);color:var(--green);padding:4px 10px;border-radius:6px;font-size:0.7rem;font-weight:600;cursor:pointer;}
+  .btn-excluir{background:rgba(192,57,43,0.12);border:1px solid var(--red);color:#e74c3c;padding:4px 10px;border-radius:6px;font-size:0.7rem;font-weight:600;cursor:pointer;}
+  .btn-editar{background:rgba(201,168,76,0.12);border:1px solid var(--gold);color:var(--gold);padding:4px 10px;border-radius:6px;font-size:0.7rem;font-weight:600;cursor:pointer;}
+  .btn-excluir-sm{background:rgba(192,57,43,0.1);border:1px solid rgba(192,57,43,0.3);color:#e74c3c;width:26px;height:26px;border-radius:6px;font-size:0.75rem;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+  .btn-editar-sm{background:rgba(201,168,76,0.1);border:1px solid rgba(201,168,76,0.3);color:var(--gold);width:26px;height:26px;border-radius:6px;font-size:0.75rem;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+  #editOverlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.75);z-index:9000;align-items:flex-end;justify-content:center;}
+  .edit-box{background:#1a1713;border:1px solid #2e2b24;border-radius:14px 14px 0 0;padding:20px 18px 30px;width:100%;max-width:480px;}
+  .edit-title{font-size:0.62rem;letter-spacing:2.5px;text-transform:uppercase;color:var(--muted);margin-bottom:14px;}
+  .edit-field{width:100%;background:var(--card);border:1.5px solid var(--border);border-radius:8px;padding:10px 12px;color:var(--text);font-family:'DM Sans';font-size:0.85rem;outline:none;margin-bottom:8px;}
+  .edit-field:focus{border-color:var(--gold);}
+  .edit-btns{display:flex;gap:7px;margin-top:4px;}
+  .edit-cancel{flex:1;padding:11px;background:transparent;border:1px solid #2e2b24;border-radius:8px;color:#7a7060;font-family:'DM Sans';font-size:0.82rem;cursor:pointer;}
+  .edit-save{flex:1;padding:11px;background:var(--gold);border:none;border-radius:8px;color:#0f0d0b;font-family:'Bebas Neue';font-size:1rem;letter-spacing:1px;cursor:pointer;}
+
+  .gasto-form{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:12px;margin-bottom:12px;}
+  .gasto-form h3{font-size:0.58rem;letter-spacing:2.5px;text-transform:uppercase;color:var(--muted);margin-bottom:8px;}
+  .tipo-toggle{display:flex;gap:5px;margin-bottom:8px;}
+  .tipo-btn{flex:1;padding:8px;border-radius:8px;border:1.5px solid var(--border);background:var(--card);color:var(--muted);font-family:'DM Sans';font-size:0.76rem;font-weight:600;cursor:pointer;text-align:center;}
+  .tipo-btn.ab{border-color:var(--gold);color:var(--gold);background:#2a2416;}
+  .tipo-btn.ap{border-color:var(--blue);color:#5dade2;background:#141e2a;}
+  .gasto-item{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:10px 11px;margin-bottom:6px;display:flex;justify-content:space-between;align-items:center;}
+  .g-desc{font-size:0.82rem;}.g-hora{font-size:0.66rem;color:var(--muted);margin-top:1px;}
+  .g-val{font-family:'Bebas Neue';font-size:0.95rem;color:var(--red);letter-spacing:1px;}
+  .g-tipo{font-size:0.58rem;font-weight:700;letter-spacing:1px;text-transform:uppercase;margin-top:1px;}
+  .g-tipo.barb{color:var(--gold);}.g-tipo.pes{color:#5dade2;}
+
+  .periodo-toggle{display:flex;gap:5px;margin-bottom:12px;background:var(--surface);padding:3px;border-radius:var(--radius);}
+  .periodo-btn{flex:1;padding:8px;border-radius:8px;border:none;background:transparent;color:var(--muted);font-family:'DM Sans';font-size:0.76rem;font-weight:600;cursor:pointer;}
+  .periodo-btn.active{background:var(--gold);color:#0f0d0b;}
+  .big-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:14px;margin-bottom:9px;}
+  .big-card h3{font-size:0.56rem;letter-spacing:2.5px;text-transform:uppercase;color:var(--muted);margin-bottom:5px;}
+  .big-number{font-family:'Bebas Neue';font-size:2rem;letter-spacing:2px;line-height:1;}
+  .big-number.green{color:#2ecc71;}.big-number.red{color:#e74c3c;}
+  .sub-label{font-size:0.7rem;color:var(--muted);margin-top:3px;}
+  .saldo-box{display:flex;gap:7px;margin-bottom:9px;}
+  .saldo-item{flex:1;background:var(--card);border:1px solid var(--border);border-radius:10px;padding:11px 9px;text-align:center;}
+  .si-label{font-size:0.58rem;color:var(--muted);text-transform:uppercase;letter-spacing:1.5px;margin-bottom:3px;}
+  .si-val{font-family:'Bebas Neue';font-size:1.25rem;letter-spacing:1px;}
+  .dias-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-bottom:9px;}
+  .dia-card{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:9px 7px;text-align:center;}
+  .dia-card.hoje-card{border-color:var(--gold);}
+  .dc-dia{font-size:0.6rem;color:var(--muted);text-transform:uppercase;margin-bottom:2px;}
+  .dc-val{font-family:'Bebas Neue';font-size:1rem;color:var(--gold);letter-spacing:1px;}
+  .dc-atend{font-size:0.62rem;color:var(--muted);margin-top:1px;}
+
+  .empty-state{text-align:center;color:var(--muted);font-size:0.82rem;padding:24px 0;line-height:1.6;}
+  .loading-state{text-align:center;color:var(--muted);font-size:0.82rem;padding:30px 0;}
+  .cliente-item{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:12px;margin-bottom:7px;}
+  .cl-header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px;}
+  .cl-nome{font-weight:600;font-size:0.88rem;color:var(--text);}
+  .cl-visitas{font-family:'Bebas Neue';font-size:1rem;color:var(--gold);letter-spacing:1px;}
+  .cl-visitas span{font-family:'DM Sans';font-size:0.65rem;color:var(--muted);font-weight:400;margin-left:2px;}
+  .cl-ultima{font-size:0.7rem;color:var(--muted);margin-bottom:4px;}
+  .cl-historico{display:flex;flex-direction:column;gap:3px;margin-top:6px;border-top:1px solid var(--border);padding-top:6px;}
+  .cl-visita-row{display:flex;justify-content:space-between;font-size:0.74rem;}
+  .cl-visita-data{color:var(--muted);}
+  .cl-visita-val{color:var(--gold);font-weight:600;}
+  .cl-fiado-badge{background:rgba(192,57,43,0.2);color:#e74c3c;font-size:0.58rem;font-weight:700;padding:1px 5px;border-radius:3px;text-transform:uppercase;margin-left:4px;}
+
+  .toast{position:fixed;bottom:calc(var(--safe-bottom) + 68px);left:50%;transform:translateX(-50%) translateY(80px);background:var(--gold);color:#0f0d0b;padding:10px 20px;border-radius:30px;font-weight:600;font-size:0.78rem;transition:transform 0.3s;z-index:999;white-space:nowrap;max-width:90vw;text-align:center;}
+  .toast.show{transform:translateX(-50%) translateY(0);}
+
+  #modalOverlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.75);z-index:9000;align-items:center;justify-content:center;}
+  .modal-box{background:#1a1713;border:1px solid #2e2b24;border-radius:14px;padding:20px 18px;max-width:270px;width:90%;text-align:center;}
+  .modal-msg{font-size:0.88rem;color:#f0ead8;margin-bottom:16px;line-height:1.5;}
+  .modal-btns{display:flex;gap:7px;}
+  .modal-cancel{flex:1;padding:10px;background:transparent;border:1px solid #2e2b24;border-radius:8px;color:#7a7060;font-family:'DM Sans';font-size:0.82rem;cursor:pointer;}
+  .modal-confirm{flex:1;padding:10px;background:rgba(192,57,43,0.2);border:1px solid #c0392b;border-radius:8px;color:#e74c3c;font-family:'DM Sans';font-size:0.82rem;font-weight:600;cursor:pointer;}
+</style>
+</head>
+<body>
+
+<!-- INSTALL BANNER (Safari) -->
+<div id="installBanner">
+  <span class="ib-icon">✂️</span>
+  <div class="ib-text">
+    <div class="ib-title">Instale o app na tela inicial</div>
+    <div class="ib-sub">Toque em <strong style="color:var(--gold)">Compartilhar</strong> → <strong style="color:var(--gold)">Adicionar à Tela de Início</strong></div>
+  </div>
+  <button class="ib-close" onclick="fecharBanner()">✕</button>
+</div>
+
+<header>
+  <h1>Barbearia</h1>
+  <p id="dataHoje"></p>
+</header>
+
+<div class="scroll-area">
+
+<!-- CAIXA -->
+<div id="tab-caixa" class="section active">
+  <div class="scroll-cats" id="catPills"></div>
+  <div id="servicosContainer"></div>
+  <span class="cat-label">Valor avulso</span>
+  <div class="avulso-row">
+    <input type="text" id="avulsoDesc" placeholder="Descrição">
+    <input type="number" id="avulsoVal" placeholder="R$" inputmode="decimal" style="max-width:75px">
+    <button onclick="addAvulso()">ADD</button>
+  </div>
+  <div class="comanda-box" id="comandaBox" style="display:none">
+    <h3>Comanda</h3>
+    <div id="comandaItens"></div>
+    <div class="total-row"><span>Total</span><span class="total-valor" id="totalValor">R$ 0</span></div>
+  </div>
+  <input type="text" class="input-field" id="nomeCliente" placeholder="Nome do cliente (opcional)">
+  <div class="fiado-toggle" id="fiadoToggle" onclick="toggleFiado()">
+    <div class="toggle-dot"></div><span class="fiado-label">Fiado</span>
+  </div>
+  <button class="btn-primary" id="btnFechar" onclick="fecharComanda()">FECHAR COMANDA</button>
+  <button class="btn-secondary" onclick="limparComanda()">Limpar tudo</button>
+</div>
+
+<!-- DIA -->
+<div id="tab-dia" class="section">
+  <div class="resumo-card" id="resumoCard"><div class="loading-state">carregando...</div></div>
+  <span class="cat-label">Atendimentos de hoje</span>
+  <div id="historicoList"></div>
+</div>
+
+<!-- FIADOS -->
+<div id="tab-fiados" class="section">
+  <div class="resumo-card">
+    <h3>Total em aberto</h3>
+    <div class="total-row" style="padding:0">
+      <span style="color:var(--muted);font-size:0.76rem">A receber</span>
+      <span class="total-valor" id="totalFiado" style="color:#e74c3c">—</span>
+    </div>
+  </div>
+  <div id="fiadosList"><div class="loading-state">carregando...</div></div>
+</div>
+
+<!-- GASTOS -->
+<div id="tab-gastos" class="section">
+  <div class="gasto-form">
+    <h3>Registrar gasto</h3>
+    <div class="tipo-toggle">
+      <div class="tipo-btn ab" id="tipoBarbBtn" onclick="setTipoGasto('barbearia')">✂️ Barbearia</div>
+      <div class="tipo-btn" id="tipoPesBtn" onclick="setTipoGasto('pessoal')">👤 Pessoal</div>
+    </div>
+    <input type="text" class="input-field" id="gastoDesc" placeholder="Descrição (produto, aluguel...)">
+    <input type="number" class="input-field" id="gastoValor" placeholder="Valor (R$)" inputmode="decimal">
+    <button class="btn-primary" onclick="adicionarGasto()">REGISTRAR GASTO</button>
+  </div>
+  <div id="gastoResumo"></div>
+  <span class="cat-label">Gastos de hoje</span>
+  <div id="gastosList"></div>
+</div>
+
+<!-- RELATÓRIO -->
+<div id="tab-relatorio" class="section">
+  <div class="periodo-toggle">
+    <button class="periodo-btn active" onclick="setPeriodo('semana',this)">📅 Esta Semana</button>
+    <button class="periodo-btn" onclick="setPeriodo('mes',this)">📆 Este Mês</button>
+  </div>
+  <div id="relatorioConteudo"><div class="loading-state">carregando...</div></div>
+</div>
+
+<!-- CLIENTES -->
+<div id="tab-clientes" class="section">
+  <div class="resumo-card" id="clientesResumo"></div>
+  <input type="text" class="input-field" id="buscaCliente" placeholder="🔍 Buscar cliente..." oninput="renderClientes()" style="margin-top:4px">
+  <div id="clientesList"></div>
+</div>
+
+</div><!-- end scroll-area -->
+
+<div class="tabs">
+  <button class="tab active" onclick="goTab('caixa',this)"><span class="ti">✂️</span>Caixa</button>
+  <button class="tab" onclick="goTab('dia',this)"><span class="ti">📊</span>Dia</button>
+  <button class="tab" onclick="goTab('clientes',this)"><span class="ti">👥</span>Clientes</button>
+  <button class="tab" onclick="goTab('fiados',this)"><span class="ti">⚠️</span>Fiados</button>
+  <button class="tab" onclick="goTab('relatorio',this)"><span class="ti">📈</span>Relatório</button>
+</div>
+
+<div id="modalOverlay">
+  <div class="modal-box">
+    <div class="modal-msg" id="modalMsg"></div>
+    <div class="modal-btns">
+      <button class="modal-cancel" onclick="modalResponder(false)">Cancelar</button>
+      <button class="modal-confirm" onclick="modalResponder(true)">Excluir</button>
+    </div>
+  </div>
+</div>
+<div id="editOverlay">
+  <div class="edit-box">
+    <div class="edit-title" id="editTitle">Editar</div>
+    <div id="editFields"></div>
+    <div class="edit-btns">
+      <button class="edit-cancel" onclick="fecharEdit()">Cancelar</button>
+      <button class="edit-save" onclick="salvarEdit()">SALVAR</button>
+    </div>
+  </div>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+// ============ CATÁLOGO ============
+const CATALOGO = {
+  corte:{label:'✂️ Cortes',items:[
+    {id:'c30',nome:'Corte',sub:'Padrão',preco:30},
+    {id:'c25',nome:'Corte',sub:'Fiel / Fácil',preco:25},
+  ]},
+  barba:{label:'🪒 Barbas',items:[
+    {id:'b25',nome:'Barba',sub:'Padrão',preco:25},
+    {id:'b20',nome:'Barba',sub:'Fiel / Fácil',preco:20},
+  ]},
+  combo:{label:'💈 Combos',items:[
+    {id:'cb50',nome:'Combo',sub:'Padrão',preco:50},
+    {id:'cb45',nome:'Combo',sub:'Desconto',preco:45},
+    {id:'cb40',nome:'Combo',sub:'Especial',preco:40},
+    {id:'pe10',nome:'Pé do Cabelo',sub:'',preco:10},
+  ]},
+  assinatura:{label:'📅 Assinaturas',items:[
+    {id:'a180',nome:'Cabelo + Barba',sub:'Mensal',preco:180},
+    {id:'a150',nome:'Cabelo + Barba',sub:'Mensal',preco:150},
+    {id:'a100',nome:'Só Cabelo',sub:'Mensal',preco:100},
+  ]},
+  bebida:{label:'🍺 Bebidas',items:[
+    {id:'cv5',nome:'Cerveja',sub:'',preco:5},
+    {id:'hn10',nome:'Heineken',sub:'',preco:10},
+    {id:'rf5',nome:'Refrigerante',sub:'',preco:5},
+    {id:'en6',nome:'Energético',sub:'Pequeno',preco:6},
+    {id:'en8',nome:'Energético',sub:'Grande',preco:8},
+  ]},
+};
+
+// ============ INDEXEDDB ============
+let db;
+function initDB(){
+  return new Promise((res,rej)=>{
+    const req=indexedDB.open('BarbeariaDB',1);
+    req.onupgradeneeded=e=>{
+      const d=e.target.result;
+      if(!d.objectStoreNames.contains('dados')) d.createObjectStore('dados');
+    };
+    req.onsuccess=e=>{ db=e.target.result; res(); };
+    req.onerror=()=>rej('IndexedDB falhou');
+  });
+}
+function dbGet(key){
+  return new Promise((res)=>{
+    if(!db){res(null);return;}
+    const tx=db.transaction('dados','readonly');
+    const req=tx.objectStore('dados').get(key);
+    req.onsuccess=()=>res(req.result||null);
+    req.onerror=()=>res(null);
+  });
+}
+function dbSet(key,val){
+  return new Promise((res)=>{
+    if(!db){res(false);return;}
+    const tx=db.transaction('dados','readwrite');
+    const req=tx.objectStore('dados').put(val,key);
+    req.onsuccess=()=>res(true);
+    req.onerror=()=>res(false);
+  });
+}
+
+// ============ DATA HELPERS ============
+function hoje(){ return new Date().toISOString().slice(0,10); }
+async function loadAtends(data){ return (await dbGet('atend_'+data))||[]; }
+async function saveAtends(data,l){ return dbSet('atend_'+data,l); }
+async function loadGastos(data){ return (await dbGet('gastos_'+data))||[]; }
+async function saveGastos(data,l){ return dbSet('gastos_'+data,l); }
+async function loadFiados(){ return (await dbGet('fiados'))||[]; }
+async function saveFiados(l){ return dbSet('fiados',l); }
+
+// ============ STATE ============
+let sel={},fiadoAtivo=false,tipoGasto='barbearia',catAtiva='corte',periodoAtivo='semana',_modalCb=null;
+
+// ============ INSTALL BANNER ============
+function fecharBanner(){
+  document.getElementById('installBanner').classList.add('hidden');
+  localStorage.setItem('banner_fechado','1');
+}
+// Mostrar só no Safari e se não foi fechado
+const isSafari=/Safari/.test(navigator.userAgent)&&!/Chrome/.test(navigator.userAgent);
+const isStandalone=window.navigator.standalone===true;
+if(!isSafari||isStandalone||localStorage.getItem('banner_fechado')){
+  document.getElementById('installBanner').classList.add('hidden');
+}
+
+// ============ TABS ============
+function goTab(tab,el){
+  document.querySelectorAll('.section').forEach(s=>s.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  document.getElementById('tab-'+tab).classList.add('active');
+  el.classList.add('active');
+  if(tab==='dia') renderDia();
+  if(tab==='fiados') renderFiados();
+  if(tab==='gastos') renderGastos();
+  if(tab==='relatorio') renderRelatorio();
+  if(tab==='clientes') renderClientes();
+}
+
+// ============ CAIXA ============
+function initPills(){
+  document.getElementById('catPills').innerHTML=Object.entries(CATALOGO).map(([k,v])=>
+    `<div class="cat-pill ${k===catAtiva?'active':''}" onclick="setCat('${k}')">${v.label}</div>`
+  ).join('');
+}
+function setCat(cat){catAtiva=cat;initPills();renderCat();}
+function renderCat(){
+  document.getElementById('servicosContainer').innerHTML=
+    `<div class="servicos-grid">${CATALOGO[catAtiva].items.map(s=>{
+      const q=sel[s.id]?.qtd||0;
+      return `<div class="servico-btn ${q>0?'selected':''}" onclick="addServ('${s.id}','${s.nome.replace(/'/g,"\\'")}',${s.preco})">
+        <span class="nome">${s.nome}</span>
+        <span class="sub">${s.sub||' '}</span>
+        <span class="preco">R$ ${s.preco}</span>
+        <span class="qtd-badge">${q}</span>
+      </div>`;
+    }).join('')}</div>`;
+}
+function addServ(id,nome,preco){
+  if(!sel[id]) sel[id]={nome,preco,qtd:0};
+  sel[id].qtd++;
+  renderCat();renderComanda();
+}
+function addAvulso(){
+  const d=document.getElementById('avulsoDesc').value.trim();
+  const v=parseFloat(document.getElementById('avulsoVal').value);
+  if(!d||isNaN(v)||v<=0){showToast('Preencha descrição e valor!');return;}
+  sel['av_'+Date.now()]={nome:d,preco:v,qtd:1};
+  document.getElementById('avulsoDesc').value='';
+  document.getElementById('avulsoVal').value='';
+  renderComanda();
+}
+function rmItem(id){delete sel[id];renderCat();renderComanda();}
+function renderComanda(){
+  const box=document.getElementById('comandaBox');
+  const entries=Object.entries(sel).filter(([,v])=>v.qtd>0);
+  if(!entries.length){box.style.display='none';return;}
+  box.style.display='block';
+  let total=0,html='';
+  entries.forEach(([id,v])=>{
+    const sub=v.preco*v.qtd;total+=sub;
+    html+=`<div class="comanda-item">
+      <span>${v.nome}${v.qtd>1?' x'+v.qtd:''}</span>
+      <span style="display:flex;align-items:center;gap:5px">
+        <span class="item-val">R$ ${sub}</span>
+        <button class="rm-btn" onclick="rmItem('${id}')">✕</button>
+      </span></div>`;
+  });
+  document.getElementById('comandaItens').innerHTML=html;
+  document.getElementById('totalValor').textContent=`R$ ${total}`;
+}
+function toggleFiado(){fiadoAtivo=!fiadoAtivo;document.getElementById('fiadoToggle').classList.toggle('on',fiadoAtivo);}
+
+async function fecharComanda(){
+  const entries=Object.entries(sel).filter(([,v])=>v.qtd>0);
+  if(!entries.length){showToast('Selecione pelo menos um serviço!');return;}
+  const btn=document.getElementById('btnFechar');
+  btn.disabled=true;
+  const nome=document.getElementById('nomeCliente').value.trim()||'Cliente';
+  const hora=new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
+  let total=0;const servs=[];
+  entries.forEach(([,v])=>{total+=v.preco*v.qtd;servs.push(`${v.nome}${v.qtd>1?' x'+v.qtd:''} (R$${v.preco*v.qtd})`);});
+  const hj=hoje();
+  const list=await loadAtends(hj);
+  list.push({nome,hora,servicos:servs,total,fiado:fiadoAtivo,id:Date.now()});
+  await saveAtends(hj,list);
+  if(fiadoAtivo){
+    const f=await loadFiados();
+    f.push({nome,servicos:servs.join(', '),total,data:hj,hora,id:Date.now()});
+    await saveFiados(f);
+  }
+  btn.disabled=false;
+  showToast(fiadoAtivo?`Fiado — ${nome} deve R$ ${total}`:`✓ Fechado — R$ ${total}`);
+  limparComanda();
+}
+function limparComanda(){
+  sel={};fiadoAtivo=false;
+  document.getElementById('nomeCliente').value='';
+  document.getElementById('fiadoToggle').classList.remove('on');
+  renderCat();renderComanda();
+}
+
+// ============ DIA ============
+async function renderDia(){
+  document.getElementById('resumoCard').innerHTML='<div class="loading-state">carregando...</div>';
+  document.getElementById('historicoList').innerHTML='';
+  const hj=hoje();
+  const A=await loadAtends(hj),G=await loadGastos(hj);
+  const pagos=A.filter(a=>!a.fiado),fhoje=A.filter(a=>a.fiado);
+  const rb=pagos.reduce((s,a)=>s+a.total,0);
+  const gb=G.filter(g=>g.tipo==='barbearia').reduce((s,g)=>s+g.valor,0);
+  const gp=G.filter(g=>g.tipo==='pessoal').reduce((s,g)=>s+g.valor,0);
+  document.getElementById('resumoCard').innerHTML=`
+    <h3>Resumo de hoje</h3>
+    <div class="stat-row"><span class="label">Atendimentos pagos</span><span class="val">${pagos.length}</span></div>
+    <div class="stat-row"><span class="label">Fiados hoje</span><span class="val red">${fhoje.length}</span></div>
+    <div class="stat-row"><span class="label">Receita bruta</span><span class="val green">R$ ${rb}</span></div>
+    <div class="stat-row"><span class="label">Gastos barbearia</span><span class="val red">- R$ ${gb}</span></div>
+    <div class="stat-row"><span class="label">Gastos pessoais</span><span class="val blue">- R$ ${gp}</span></div>
+    <div class="stat-row"><span class="label">Líquido (barb.)</span><span class="val gold">R$ ${rb-gb}</span></div>`;
+  document.getElementById('historicoList').innerHTML=!A.length?'<div class="empty-state">Nenhum atendimento hoje ainda.</div>':
+    [...A].reverse().map(a=>`
+    <div class="historico-item">
+      <div class="hi-header"><span class="hi-nome">${a.nome}</span><span class="hi-hora">${a.hora}</span></div>
+      <div class="hi-servicos">${a.servicos.join(' + ')}</div>
+      <div class="hi-footer">
+        <span class="${a.fiado?'fiado-tag':'pago-tag'}">${a.fiado?'FIADO':'PAGO'}</span>
+        <span style="display:flex;align-items:center;gap:5px">
+          <span class="hi-valor">R$ ${a.total}</span>
+          <button class="btn-editar-sm" onclick="editarAtendimento(${a.id})">✏️</button>
+          <button class="btn-excluir-sm" onclick="excluirAtendimento(${a.id})">🗑</button>
+        </span>
+      </div></div>`).join('');
+}
+
+// ============ FIADOS ============
+async function renderFiados(){
+  document.getElementById('fiadosList').innerHTML='<div class="loading-state">carregando...</div>';
+  const F=await loadFiados();
+  document.getElementById('totalFiado').textContent=`R$ ${F.reduce((s,f)=>s+f.total,0)}`;
+  document.getElementById('fiadosList').innerHTML=!F.length?'<div class="empty-state">Nenhum fiado em aberto 🎉</div>':
+    F.map(f=>`
+    <div class="fiado-item">
+      <div>
+        <div class="fi-nome">${f.nome}</div>
+        <div class="fi-servico">${f.servicos}</div>
+        <div class="fi-data">${f.data}${f.hora?' às '+f.hora:''}</div>
+        <div style="display:flex;gap:5px;margin-top:6px">
+          <button class="btn-receber" onclick="receberFiado(${f.id})">✓ Recebido</button>
+          <button class="btn-editar" onclick="editarFiado(${f.id})">✏️ Editar</button>
+          <button class="btn-excluir" onclick="excluirFiado(${f.id})">🗑</button>
+        </div>
+      </div>
+      <div class="fi-val">R$ ${f.total}</div>
+    </div>`).join('');
+}
+async function receberFiado(id){
+  const F=await loadFiados();
+  const f=F.find(x=>x.id===id);
+  if(f){ f.pago=true; f.dataPagamento=hoje(); }
+  // Move para histórico de fiados pagos
+  const hist=await dbGet('fiados_pagos')||[];
+  hist.push({...f});
+  await dbSet('fiados_pagos',hist);
+  await saveFiados(F.filter(f=>f.id!==id));
+  showToast('Recebido! ✓');
+  renderFiados();
+}
+function excluirFiado(id){abrirModal('Excluir este fiado?',async()=>{const F=await loadFiados();await saveFiados(F.filter(f=>f.id!==id));showToast('Excluído.');renderFiados();});}
+function excluirAtendimento(id){abrirModal('Excluir este atendimento?',async()=>{const hj=hoje();const A=await loadAtends(hj);await saveAtends(hj,A.filter(a=>a.id!==id));showToast('Excluído.');renderDia();});}
+
+// ============ GASTOS ============
+function setTipoGasto(t){
+  tipoGasto=t;
+  document.getElementById('tipoBarbBtn').className='tipo-btn'+(t==='barbearia'?' ab':'');
+  document.getElementById('tipoPesBtn').className='tipo-btn'+(t==='pessoal'?' ap':'');
+}
+async function adicionarGasto(){
+  const d=document.getElementById('gastoDesc').value.trim();
+  const v=parseFloat(document.getElementById('gastoValor').value);
+  if(!d||isNaN(v)||v<=0){showToast('Preencha descrição e valor!');return;}
+  const hora=new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
+  const hj=hoje();
+  const G=await loadGastos(hj);
+  G.push({desc:d,valor:v,hora,tipo:tipoGasto,id:Date.now()});
+  await saveGastos(hj,G);
+  document.getElementById('gastoDesc').value='';
+  document.getElementById('gastoValor').value='';
+  showToast('Gasto registrado!');
+  renderGastos();
+}
+async function renderGastos(){
+  const hj=hoje();
+  const G=await loadGastos(hj);
+  const gb=G.filter(g=>g.tipo==='barbearia').reduce((s,g)=>s+g.valor,0);
+  const gp=G.filter(g=>g.tipo==='pessoal').reduce((s,g)=>s+g.valor,0);
+  document.getElementById('gastoResumo').innerHTML=`
+    <div class="resumo-card">
+      <h3>Resumo de gastos hoje</h3>
+      <div class="stat-row"><span class="label">✂️ Barbearia</span><span class="val red">R$ ${gb}</span></div>
+      <div class="stat-row"><span class="label">👤 Pessoal</span><span class="val blue">R$ ${gp}</span></div>
+      <div class="stat-row"><span class="label">Total</span><span class="val red">R$ ${gb+gp}</span></div>
+    </div>`;
+  document.getElementById('gastosList').innerHTML=!G.length?'<div class="empty-state">Sem gastos hoje.</div>':
+    [...G].reverse().map(g=>`
+    <div class="gasto-item">
+      <div><div class="g-desc">${g.desc}</div><div class="g-hora">${g.hora}</div></div>
+      <div style="display:flex;align-items:center;gap:5px">
+        <div style="text-align:right">
+          <div class="g-val">- R$ ${g.valor}</div>
+          <div class="g-tipo ${g.tipo==='barbearia'?'barb':'pes'}">${g.tipo==='barbearia'?'BARBEARIA':'PESSOAL'}</div>
+        </div>
+        <button class="btn-editar-sm" onclick="editarGasto(${g.id})">✏️</button>
+        <button class="btn-excluir-sm" onclick="excluirGasto(${g.id})">🗑</button>
+      </div></div>`).join('');
+}
+function excluirGasto(id){abrirModal('Excluir este gasto?',async()=>{const hj=hoje();const G=await loadGastos(hj);await saveGastos(hj,G.filter(g=>g.id!==id));showToast('Excluído.');renderGastos();});}
+
+// ============ RELATÓRIO ============
+function setPeriodo(p,el){periodoAtivo=p;document.querySelectorAll('.periodo-btn').forEach(b=>b.classList.remove('active'));el.classList.add('active');renderRelatorio();}
+function getDatas(tipo){
+  const datas=[],now=new Date();
+  if(tipo==='semana'){for(let i=6;i>=0;i--){const d=new Date(now);d.setDate(now.getDate()-i);datas.push(d.toISOString().slice(0,10));}}
+  else{const a=now.getFullYear(),m=now.getMonth(),t=new Date(a,m+1,0).getDate();for(let d=1;d<=t;d++)datas.push(`${a}-${String(m+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`);}
+  return datas;
+}
+async function renderRelatorio(){
+  document.getElementById('relatorioConteudo').innerHTML='<div class="loading-state">carregando...</div>';
+  const datas=getDatas(periodoAtivo),hj=hoje();
+  let totR=0,totGB=0,totGP=0,totA=0,totF=0;const diasComDados=[];
+  for(const d of datas){
+    const A=await loadAtends(d),G=await loadGastos(d);
+    const pagos=A.filter(a=>!a.fiado);
+    const r=pagos.reduce((s,a)=>s+a.total,0);
+    const gb=G.filter(g=>g.tipo==='barbearia').reduce((s,g)=>s+g.valor,0);
+    const gp=G.filter(g=>g.tipo==='pessoal').reduce((s,g)=>s+g.valor,0);
+    totR+=r;totGB+=gb;totGP+=gp;totA+=pagos.length;totF+=A.filter(a=>a.fiado).length;
+    if(r>0||gb>0||pagos.length>0) diasComDados.push({data:d,r,gb,atend:pagos.length});
+  }
+  const liq=totR-totGB,label=periodoAtivo==='semana'?'últimos 7 dias':'este mês';
+  const dias=['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
+  let html=`
+    <div class="saldo-box">
+      <div class="saldo-item"><div class="si-label">Entrou</div><div class="si-val green">R$ ${totR}</div></div>
+      <div class="saldo-item"><div class="si-label">Saiu (barb.)</div><div class="si-val red">R$ ${totGB}</div></div>
+    </div>
+    <div class="big-card">
+      <h3>Líquido ${label}</h3>
+      <div class="big-number ${liq>=0?'green':'red'}">R$ ${liq}</div>
+      <div class="sub-label">${totA} atendimentos · ${totF} fiados · ticket ${totA>0?'R$'+(totR/totA).toFixed(0):'—'}</div>
+    </div>
+    <div class="resumo-card">
+      <h3>Detalhamento</h3>
+      <div class="stat-row"><span class="label">Receita bruta</span><span class="val green">R$ ${totR}</span></div>
+      <div class="stat-row"><span class="label">Gastos barbearia</span><span class="val red">- R$ ${totGB}</span></div>
+      <div class="stat-row"><span class="label">Gastos pessoais</span><span class="val blue">- R$ ${totGP}</span></div>
+      <div class="stat-row"><span class="label">Líquido</span><span class="val gold">R$ ${liq}</span></div>
+    </div>`;
+  if(diasComDados.length){
+    html+=`<span class="cat-label">Dias com movimento</span><div class="dias-grid">`;
+    diasComDados.forEach(d=>{
+      const dt=new Date(d.data+'T12:00:00');
+      html+=`<div class="dia-card ${d.data===hj?'hoje-card':''}">
+        <div class="dc-dia">${dias[dt.getDay()]} ${dt.getDate()}/${dt.getMonth()+1}</div>
+        <div class="dc-val">R$ ${d.r}</div>
+        <div class="dc-atend">${d.atend} atend.</div>
+      </div>`;
+    });
+    html+=`</div>`;
+  } else {
+    html+=`<div class="empty-state">Nenhum dado neste período ainda.</div>`;
+  }
+  document.getElementById('relatorioConteudo').innerHTML=html;
+}
+
+// ============ EDITAR ============
+let _editCb=null;
+function fecharEdit(){document.getElementById('editOverlay').style.display='none';_editCb=null;}
+
+function abrirEdit(title, fields, cb){
+  _editCb=cb;
+  document.getElementById('editTitle').textContent=title;
+  document.getElementById('editFields').innerHTML=fields.map(f=>
+    `<input class="edit-field" id="ef_${f.id}" type="${f.type||'text'}" placeholder="${f.label}" value="${f.value}" inputmode="${f.inputmode||'text'}">`
+  ).join('');
+  document.getElementById('editOverlay').style.display='flex';
+  // focus first field
+  setTimeout(()=>document.querySelector('.edit-field')?.focus(),100);
+}
+
+function salvarEdit(){
+  if(_editCb) _editCb();
+}
+
+async function editarAtendimento(id){
+  const hj=hoje();
+  const A=await loadAtends(hj);
+  const a=A.find(x=>x.id===id);
+  if(!a) return;
+  abrirEdit('Editar Atendimento',[
+    {id:'nome',label:'Nome do cliente',value:a.nome},
+    {id:'total',label:'Valor total (R$)',value:a.total,type:'number',inputmode:'decimal'},
+  ], async()=>{
+    const nome=document.getElementById('ef_nome').value.trim();
+    const total=parseFloat(document.getElementById('ef_total').value);
+    if(!nome||isNaN(total)||total<=0){showToast('Preencha todos os campos!');return;}
+    a.nome=nome; a.total=total;
+    await saveAtends(hj,A);
+    fecharEdit(); showToast('Atendimento atualizado!'); renderDia();
+  });
+}
+
+async function editarFiado(id){
+  const F=await loadFiados();
+  const f=F.find(x=>x.id===id);
+  if(!f) return;
+  abrirEdit('Editar Fiado',[
+    {id:'nome',label:'Nome do cliente',value:f.nome},
+    {id:'total',label:'Valor (R$)',value:f.total,type:'number',inputmode:'decimal'},
+  ], async()=>{
+    const nome=document.getElementById('ef_nome').value.trim();
+    const total=parseFloat(document.getElementById('ef_total').value);
+    if(!nome||isNaN(total)||total<=0){showToast('Preencha todos os campos!');return;}
+    f.nome=nome; f.total=total;
+    await saveFiados(F);
+    fecharEdit(); showToast('Fiado atualizado!'); renderFiados();
+  });
+}
+
+async function editarGasto(id){
+  const hj=hoje();
+  const G=await loadGastos(hj);
+  const g=G.find(x=>x.id===id);
+  if(!g) return;
+  abrirEdit('Editar Gasto',[
+    {id:'desc',label:'Descrição',value:g.desc},
+    {id:'valor',label:'Valor (R$)',value:g.valor,type:'number',inputmode:'decimal'},
+  ], async()=>{
+    const desc=document.getElementById('ef_desc').value.trim();
+    const valor=parseFloat(document.getElementById('ef_valor').value);
+    if(!desc||isNaN(valor)||valor<=0){showToast('Preencha todos os campos!');return;}
+    g.desc=desc; g.valor=valor;
+    await saveGastos(hj,G);
+    fecharEdit(); showToast('Gasto atualizado!'); renderGastos();
+  });
+}
+
+// ============ CLIENTES ============
+async function renderClientes(){
+  const busca=(document.getElementById('buscaCliente')?.value||'').toLowerCase().trim();
+  // Buscar todos os atendimentos dos últimos 90 dias
+  const datas=[];
+  const now=new Date();
+  for(let i=89;i>=0;i--){const d=new Date(now);d.setDate(now.getDate()-i);datas.push(d.toISOString().slice(0,10));}
+
+  // Agrupa por nome do cliente
+  const mapa={};
+  for(const data of datas){
+    const A=await loadAtends(data);
+    A.forEach(a=>{
+      const nome=a.nome==='Cliente'?'Cliente (sem nome)':a.nome;
+      if(!mapa[nome]) mapa[nome]={nome,visitas:[],total:0};
+      mapa[nome].visitas.push({data,hora:a.hora,servicos:a.servicos,total:a.total,fiado:a.fiado});
+      if(!a.fiado) mapa[nome].total+=a.total;
+    });
+  }
+
+  const clientes=Object.values(mapa)
+    .filter(c=>!busca||c.nome.toLowerCase().includes(busca))
+    .sort((a,b)=>{
+      const ua=a.visitas[a.visitas.length-1]?.data||'';
+      const ub=b.visitas[b.visitas.length-1]?.data||'';
+      return ub.localeCompare(ua);
+    });
+
+  // Resumo
+  document.getElementById('clientesResumo').innerHTML=`
+    <h3>Clientes — últimos 90 dias</h3>
+    <div class="stat-row"><span class="label">Clientes únicos</span><span class="val">${Object.keys(mapa).length}</span></div>
+    <div class="stat-row"><span class="label">Total atendimentos</span><span class="val">${Object.values(mapa).reduce((s,c)=>s+c.visitas.length,0)}</span></div>
+  `;
+
+  if(!clientes.length){
+    document.getElementById('clientesList').innerHTML='<div class="empty-state">Nenhum cliente encontrado.</div>';
+    return;
+  }
+
+  const diasSemana=['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
+  document.getElementById('clientesList').innerHTML=clientes.map(c=>{
+    const ultimaVisita=c.visitas[c.visitas.length-1];
+    const dt=new Date(ultimaVisita.data+'T12:00:00');
+    const ultimaLabel=`${diasSemana[dt.getDay()]}, ${dt.getDate()}/${dt.getMonth()+1}/${dt.getFullYear()} às ${ultimaVisita.hora}`;
+    const temFiado=c.visitas.some(v=>v.fiado);
+    // Últimas 5 visitas
+    const ultimas=[...c.visitas].reverse().slice(0,5);
+    return `<div class="cliente-item">
+      <div class="cl-header">
+        <div>
+          <div class="cl-nome">${c.nome}${temFiado?'<span class="cl-fiado-badge">fiado</span>':''}</div>
+          <div class="cl-ultima">Última visita: ${ultimaLabel}</div>
+        </div>
+        <div style="text-align:right">
+          <div class="cl-visitas">${c.visitas.length}<span>visitas</span></div>
+          <div style="font-size:0.7rem;color:var(--green)">R$ ${c.total}</div>
+        </div>
+      </div>
+      <div class="cl-historico">
+        ${ultimas.map(v=>{
+          const d=new Date(v.data+'T12:00:00');
+          return `<div class="cl-visita-row">
+            <span class="cl-visita-data">${d.getDate()}/${d.getMonth()+1} ${v.hora}${v.fiado?' 🔴':''}</span>
+            <span class="cl-visita-val">R$ ${v.total} · ${v.servicos.join(', ')}</span>
+          </div>`;
+        }).join('')}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// ============ MODAL ============
+function abrirModal(msg,cb){_modalCb=cb;document.getElementById('modalMsg').textContent=msg;document.getElementById('modalOverlay').style.display='flex';}
+function modalResponder(ok){document.getElementById('modalOverlay').style.display='none';if(ok&&_modalCb)_modalCb();_modalCb=null;}
+
+// ============ TOAST ============
+function showToast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2600);}
+
+// ============ INIT ============
+document.getElementById('dataHoje').textContent=new Date().toLocaleDateString('pt-BR',{weekday:'long',day:'numeric',month:'long'});
+initDB().then(()=>{
+  initPills();renderCat();
+}).catch(()=>{
+  showToast('Erro ao iniciar banco de dados!');
+});
+</script>
+</body>
+</html>
